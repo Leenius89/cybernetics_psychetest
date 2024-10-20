@@ -105,4 +105,4 @@ const extractParts = (results) => {
   return parts;
 };
 
-export { calculateResults, interpretResults, extractParts };
+export { calculateResults, interpretResults, extractParts, getComplexInterpretation };

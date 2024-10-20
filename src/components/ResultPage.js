@@ -107,7 +107,7 @@ const ResultPage = ({ testResults, parts, userName, onRestart }) => {
     setIsGeneratingImage(true);
     setError(null);
     try {
-      const imageUrl = await generateAIImage(testResults);
+      const imageUrl = await generateAIImage(testResults, categoryScores);
       setAiImage(imageUrl);
     } catch (error) {
       console.error("Failed to generate image:", error);
@@ -115,7 +115,7 @@ const ResultPage = ({ testResults, parts, userName, onRestart }) => {
     } finally {
       setIsGeneratingImage(false);
     }
-  }, [testResults, isGeneratingImage]);
+  }, [testResults, categoryScores, isGeneratingImage]);
   
   useEffect(() => {
     if (!aiImage && !isGeneratingImage && !error) {
