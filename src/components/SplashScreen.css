@@ -1,0 +1,33 @@
+.splash-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+  background-color: #fff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: all 1s ease-in-out;
+}
+
+.splash-content {
+  width: 80%;
+  max-width: 600px; /* Adjust this value as needed */
+  transition: all 1s ease-in-out;
+}
+
+.splash-video {
+  width: 100%;
+  height: auto;
+}
+
+.fold-in {
+  background-color: transparent;
+}
+
+.fold-in .splash-content {
+  transform: scale(0);
+  opacity: 0;
+}

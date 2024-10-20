@@ -1,0 +1,85 @@
+{
+  "name": "cybernetic-psyche-test",
+  "version": "0.1.0",
+  "private": true,
+  "proxy": "http://localhost:3001",
+  "dependencies": {
+    "@mediapipe/tasks-vision": "^0.10.17",
+    "@react-three/drei": "^9.88.0",
+    "@react-three/fiber": "^8.15.11",
+    "@testing-library/jest-dom": "^5.17.0",
+    "@testing-library/react": "^14.0.0",
+    "@testing-library/user-event": "^14.5.1",
+    "axios": "^1.7.7",
+    "chart.js": "^4.4.0",
+    "concurrently": "^8.2.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "eslint-plugin-import": "^2.31.0",
+    "express": "^4.21.1",
+    "googleapis": "^144.0.0",
+    "http-proxy-middleware": "^3.0.3",
+    "lucide-react": "^0.292.0",
+    "react": "^18.2.0",
+    "react-chartjs-2": "^5.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.20.0",
+    "react-scripts": "5.0.1",
+    "replicate": "^0.25.2",
+    "sass": "^1.69.5",
+    "three": "^0.169.0",
+    "three-mesh-bvh": "^0.8.2",
+    "three-stdlib": "^2.33.0",
+    "web-vitals": "^3.5.0"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "server": "/server.js",
+    "start:dev": "concurrently \"node server.js\" \"react-scripts start\"",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ],
+    "rules": {
+      "import/first": "off",
+      "import/order": "off"
+    }
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.8",
+    "@babel/eslint-parser": "^7.25.8",
+    "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
+    "@babel/plugin-transform-class-properties": "^7.25.7",
+    "@babel/plugin-transform-nullish-coalescing-operator": "^7.25.8",
+    "@babel/plugin-transform-optional-chaining": "^7.25.8",
+    "@babel/plugin-transform-private-methods": "^7.25.7",
+    "@babel/plugin-transform-private-property-in-object": "^7.25.8",
+    "@babel/preset-react": "^7.25.7",
+    "autoprefixer": "^10.4.16",
+    "cross-env": "^7.0.3",
+    "eslint": "^8.57.1",
+    "eslint-plugin-react": "^7.37.1",
+    "postcss": "^8.4.31",
+    "tailwindcss": "^3.3.5"
+  },
+  "engines": {
+    "node": ">=20.x"
+  }
+}
