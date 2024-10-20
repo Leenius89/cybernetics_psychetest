@@ -2,7 +2,7 @@
   "name": "cybernetic-psyche-test",
   "version": "0.1.0",
   "private": true,
-  "proxy": "http://localhost:3001",
+  "proxy": "http://localhost:3000",
   "dependencies": {
     "@mediapipe/tasks-vision": "^0.10.17",
     "@react-three/drei": "^9.88.0",
@@ -34,8 +34,8 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "server": "/server.js",
-    "start:dev": "concurrently \"node server.js\" \"react-scripts start\"",
+    "server": "node server.js",
+    "start:dev": "concurrently \"node -r dotenv/config src/server.js dotenv_config_path=.env.development\" \"cross-env PORT=3000 react-scripts start\"",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"

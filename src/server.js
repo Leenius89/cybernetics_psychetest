@@ -1,4 +1,5 @@
 const express = require('express');
+const app = express();
 const { google } = require('googleapis');
 const cors = require('cors');
 const Replicate = require('replicate');
@@ -7,17 +8,19 @@ const path = require('path');
 console.log('Current working directory:', process.cwd());
 console.log('server.js path:', __filename);
 
-const app = express();
-
 const PORT = process.env.PORT || 3001;
 const HOST = process.env.HOST || 'localhost';
+const SERVER_PORT = process.env.SERVER_PORT || 3001;
 
 app.use(cors({
-  origin: `http://localhost:3000`,
+  origin: 'http://localhost:3000',
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
 }));
 
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ limit: '1mb', extended: true }));
 
 const auth = new google.auth.GoogleAuth({
   keyFile: './cybernetics-psychetest-b34604286806.json',
@@ -102,8 +105,6 @@ app.post('/api/generate-image', async (req, res) => {
     return res.status(500).json({ error: 'Failed to generate image' });
   }
 });
-
-const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, HOST, () => {
   console.log(`Server running on http://${HOST}:${PORT}`);
