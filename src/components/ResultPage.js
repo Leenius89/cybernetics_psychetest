@@ -15,8 +15,8 @@ const ResultPage = ({ testResults, parts, userName, onRestart }) => {
   const [isDarkMode] = useState(document.documentElement.classList.contains('dark'));
   const [aiImage, setAiImage] = useState(null);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
-  const [isImageGenerated, setIsImageGenerated] = useState(false);
   const [error, setError] = useState(null);
+  const imageRequestedRef = useRef(false);
   const [isCopied, setIsCopied] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("AI 이미지 생성 중...");
@@ -132,8 +132,9 @@ const ResultPage = ({ testResults, parts, userName, onRestart }) => {
     }
   }, []);
 
-  const generateImage = useCallback(async () => {
-    if (isGeneratingImage || isImageGenerated) return;
+ const generateImage = useCallback(async () => {
+    if (imageRequestedRef.current) return;
+    imageRequestedRef.current = true;
     setIsGeneratingImage(true);
     setError(null);
     setLoadingMessage("AI 이미지 생성 중...");
@@ -141,7 +142,6 @@ const ResultPage = ({ testResults, parts, userName, onRestart }) => {
     try {
       const imageUrl = await generateAIImage(testResults, categoryScores);
       setAiImage(imageUrl);
-      setIsImageGenerated(true);
     } catch (error) {
       console.error("Failed to generate image:", error);
       setError(error.message || "이미지 생성에 실패했습니다.");
@@ -149,14 +149,14 @@ const ResultPage = ({ testResults, parts, userName, onRestart }) => {
       setIsGeneratingImage(false);
       stopAudio();
     }
-  }, [testResults, categoryScores, isGeneratingImage, isImageGenerated, playAudio, stopAudio]);
+  }, [testResults, categoryScores, playAudio, stopAudio]);
   
   useEffect(() => {
-    if (!isImageGenerated && !isGeneratingImage && !error) {
+    if (!aiImage && !isGeneratingImage && !error) {
       generateImage();
     }
-  }, [isImageGenerated, isGeneratingImage, error, generateImage]);
-
+  }, [aiImage, isGeneratingImage, error, generateImage]);
+  
   const handleDownloadParts = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -210,8 +210,11 @@ const ResultPage = ({ testResults, parts, userName, onRestart }) => {
     <div className="flex flex-col space-y-4 relative">
       <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md">
         <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-white">{userName}님의 테스트 결과</h2>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
+        
+        {/* 768px 미만 화면용 레이아웃 */}
+        <div className="md:hidden">
+          {/* 발견된 능력 */}
+          <div className="mb-4">
             <h3 className="text-xl font-bold mb-2 text-gray-700 dark:text-gray-300">발견된 능력</h3>
             {topTwoAbilities.map(({ key, ability }, index) => (
               <div key={index} className="bg-gray-100 dark:bg-gray-700 p-2 rounded mb-2">
@@ -221,7 +224,17 @@ const ResultPage = ({ testResults, parts, userName, onRestart }) => {
               </div>
             ))}
           </div>
-          <div>
+
+          {/* 능력 카테고리 */}
+          <div className="mb-4">
+            <h3 className="text-xl font-bold mb-4 text-gray-700 dark:text-gray-300">능력 카테고리</h3>
+            <div className="w-full h-64">
+              <Radar data={radarData} options={radarOptions} />
+            </div>
+          </div>
+
+          {/* 세부 능력 점수 */}
+          <div className="mb-4">
             <h3 className="text-xl font-bold mb-2 text-gray-700 dark:text-gray-300">세부 능력 점수</h3>
             <div className="grid grid-cols-2 gap-2">
               {Object.entries(sortedTestResults).map(([key, value], index) => (
@@ -232,75 +245,158 @@ const ResultPage = ({ testResults, parts, userName, onRestart }) => {
               ))}
             </div>
           </div>
-        </div>
-      </div>
 
-      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md">
-        <div className="grid grid-cols-3 gap-4">
-          <div className="flex flex-col">
-            <h3 className="text-xl font-bold mb-4 text-gray-700 dark:text-gray-300">능력 카테고리</h3>
-            <div className="flex-grow flex items-center justify-center">
-              <div className="w-full h-64">
-                <Radar data={radarData} options={radarOptions} />
-              </div>
-            </div>
-          </div>
-          <div className="flex flex-col">
-            <h3 className="text-xl font-bold mb-4 text-gray-700 dark:text-gray-300">Machine Butcher AI</h3>
-            <div className="flex-grow flex items-center justify-center">
-              <div className="w-full h-80 bg-gray-800 rounded-lg overflow-hidden">
-                <Canvas camera={{ position: [0, 0, 4] }}>
-                  <ambientLight intensity={0.5} />
-                  <pointLight position={[10, 10, 10]} />
-                  <ThreeDModel testResults={categoryScores} parts={parts} />
-                </Canvas>
-              </div>
-            </div>
-          </div>
-          <div className="flex flex-col">
+          {/* 세부 능력 분포 */}
+          <div className="mb-4">
             <h3 className="text-xl font-bold mb-4 text-gray-700 dark:text-gray-300">세부 능력 분포</h3>
-            <div className="flex-grow flex items-center justify-center">
-              <div className="w-full h-96">
-                <Bar data={barData} options={barOptions} />
-              </div>
+            <div className="w-full h-96">
+              <Bar data={barData} options={barOptions} />
+            </div>
+          </div>
+
+          {/* Machine Butcher AI */}
+          <div className="mb-4">
+            <h3 className="text-xl font-bold mb-4 text-gray-700 dark:text-gray-300">Machine Butcher AI</h3>
+            <div className="w-full h-80 bg-gray-800 rounded-lg overflow-hidden">
+              <Canvas camera={{ position: [0, 0, 4] }}>
+                <ambientLight intensity={0.5} />
+                <pointLight position={[10, 10, 10]} />
+                <ThreeDModel testResults={categoryScores} parts={parts} />
+              </Canvas>
+            </div>
+          </div>
+
+          {/* 결과 설명 */}
+          <div className="mb-4">
+            <h3 className="text-xl font-bold mb-2 text-gray-700 dark:text-gray-300">결과 설명</h3>
+            <div className="text-sm text-gray-600 dark:text-gray-300">
+              <p className="whitespace-pre-line">{detailedInterpretation}</p>
+            </div>
+          </div>
+
+          {/* AI 생성 이미지 */}
+          <div>
+            <h3 className="text-xl font-bold mb-2 text-gray-700 dark:text-gray-300">AI 생성 이미지</h3>
+            <div 
+              className="aspect-square bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 cursor-pointer"
+              onClick={toggleFullscreen}
+            >
+              {aiImage ? (
+                <img src={aiImage} alt="AI Generated" className="w-full h-full object-contain" />
+              ) : (
+                <p>{error || "이미지를 생성할 수 없습니다."}</p>
+              )}
+            </div>
+            <div className="mt-4 grid grid-cols-1 gap-2">
+              <button 
+                onClick={handleDownloadParts} 
+                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:bg-blue-300"
+                disabled={!aiImage}
+              >
+                Parts 다운로드
+              </button>
+              <button onClick={handleShareTest} className="bg-indigo-500 text-white px-4 py-2 rounded hover:bg-indigo-600">
+                테스트 공유하기
+              </button>
+              <button onClick={onRestart} className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
+                처음으로
+              </button>
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md grid grid-cols-2 gap-4">
-        <div>
-          <h3 className="text-xl font-bold mb-2 text-gray-700 dark:text-gray-300">결과 설명</h3>
-          <div className="columns-2 gap-4 text-sm text-gray-600 dark:text-gray-300">
-            <p className="whitespace-pre-line">{detailedInterpretation}</p>
+        {/* 768px 이상 화면용 레이아웃 (기존 레이아웃) */}
+        <div className="hidden md:block">
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <h3 className="text-xl font-bold mb-2 text-gray-700 dark:text-gray-300">발견된 능력</h3>
+              {topTwoAbilities.map(({ key, ability }, index) => (
+                <div key={index} className="bg-gray-100 dark:bg-gray-700 p-2 rounded mb-2">
+                  <p className="font-semibold text-gray-800 dark:text-white">{key}</p>
+                  <p className="text-gray-600 dark:text-gray-300">{ability}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{(testResults[ability] || 0).toFixed(2)}</p>
+                </div>
+              ))}
+            </div>
+            <div>
+              <h3 className="text-xl font-bold mb-2 text-gray-700 dark:text-gray-300">세부 능력 점수</h3>
+              <div className="grid grid-cols-2 gap-2">
+                {Object.entries(sortedTestResults).map(([key, value], index) => (
+                  <div key={key} className="text-sm text-gray-600 dark:text-gray-300">
+                    <span className="font-semibold">{key}: </span>
+                    <span>{value.toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
-        </div>
-        <div>
-        <h3 className="text-xl font-bold mb-2 text-gray-700 dark:text-gray-300">AI 생성 이미지</h3>
-          <div 
-            className="aspect-square bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 cursor-pointer"
-            onClick={toggleFullscreen}
-          >
-            {aiImage ? (
-              <img src={aiImage} alt="AI Generated" className="w-full h-full object-contain" />
-            ) : (
-              <p>{error || "이미지를 생성할 수 없습니다."}</p>
-            )}
+
+          <div className="grid grid-cols-3 gap-4 mb-4">
+            <div className="flex flex-col">
+              <h3 className="text-xl font-bold mb-4 text-gray-700 dark:text-gray-300">능력 카테고리</h3>
+              <div className="flex-grow flex items-center justify-center">
+                <div className="w-full h-64">
+                  <Radar data={radarData} options={radarOptions} />
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-col">
+              <h3 className="text-xl font-bold mb-4 text-gray-700 dark:text-gray-300">Machine Butcher AI</h3>
+              <div className="flex-grow flex items-center justify-center">
+                <div className="w-full h-80 bg-gray-800 rounded-lg overflow-hidden">
+                  <Canvas camera={{ position: [0, 0, 4] }}>
+                    <ambientLight intensity={0.5} />
+                    <pointLight position={[10, 10, 10]} />
+                    <ThreeDModel testResults={categoryScores} parts={parts} />
+                  </Canvas>
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-col">
+              <h3 className="text-xl font-bold mb-4 text-gray-700 dark:text-gray-300">세부 능력 분포</h3>
+              <div className="flex-grow flex items-center justify-center">
+                <div className="w-full h-96">
+                  <Bar data={barData} options={barOptions} />
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="mt-4 grid grid-cols-3 gap-2">
-            <button 
-              onClick={handleDownloadParts} 
-              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:bg-blue-300"
-              disabled={!aiImage}
-            >
-              Parts 다운로드
-            </button>
-            <button onClick={handleShareTest} className="bg-indigo-500 text-white px-4 py-2 rounded hover:bg-indigo-600">
-              테스트 공유하기
-            </button>
-            <button onClick={onRestart} className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
-              처음으로
-            </button>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <h3 className="text-xl font-bold mb-2 text-gray-700 dark:text-gray-300">결과 설명</h3>
+              <div className="columns-2 gap-4 text-sm text-gray-600 dark:text-gray-300">
+                <p className="whitespace-pre-line">{detailedInterpretation}</p>
+              </div>
+            </div>
+            <div>
+              <h3 className="text-xl font-bold mb-2 text-gray-700 dark:text-gray-300">AI 생성 이미지</h3>
+              <div 
+                className="aspect-square bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 cursor-pointer"
+                onClick={toggleFullscreen}
+              >
+                {aiImage ? (
+                  <img src={aiImage} alt="AI Generated" className="w-full h-full object-contain" />
+                ) : (
+                  <p>{error || "이미지를 생성할 수 없습니다."}</p>
+                )}
+              </div>
+              <div className="mt-4 grid grid-cols-3 gap-2">
+                <button 
+                  onClick={handleDownloadParts} 
+                  className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:bg-blue-300"
+                  disabled={!aiImage}
+                >
+                  Parts 다운로드
+                </button>
+                <button onClick={handleShareTest} className="bg-indigo-500 text-white px-4 py-2 rounded hover:bg-indigo-600">
+                  테스트 공유하기
+                </button>
+                <button onClick={onRestart} className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
+                  처음으로
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
