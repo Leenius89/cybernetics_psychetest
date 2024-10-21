@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
 import ThreeDModel from './ThreeDModel';
 import { Radar, Bar } from 'react-chartjs-2';
@@ -6,15 +6,21 @@ import { Chart as ChartJS, RadialLinearScale, PointElement, LineElement, Filler,
 import { calculateCategoryScores } from '../utils/abilityCategorization';
 import { getDetailedInterpretation } from '../utils/resultInterpretationUtilities';
 import { generateAIImage } from '../utils/fluxAIService';
+import LoadingScreen from './LoadingScreen';
+import { CheckCircle } from 'lucide-react';
 
 ChartJS.register(RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
 
 const ResultPage = ({ testResults, parts, userName, onRestart }) => {
-  const [shareMenuOpen, setShareMenuOpen] = useState(false);
   const [isDarkMode] = useState(document.documentElement.classList.contains('dark'));
   const [aiImage, setAiImage] = useState(null);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [isImageGenerated, setIsImageGenerated] = useState(false);
   const [error, setError] = useState(null);
+  const [isCopied, setIsCopied] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("AI 이미지 생성 중...");
+  const audioRef = useRef(null);
 
   const categoryScores = useMemo(() => calculateCategoryScores(testResults), [testResults]);
   const detailedInterpretation = useMemo(() => getDetailedInterpretation(testResults, categoryScores), [testResults, categoryScores]);
@@ -102,33 +108,106 @@ const ResultPage = ({ testResults, parts, userName, onRestart }) => {
     },
   }), [isDarkMode, chartLineColor, chartTextColor]);
 
+  useEffect(() => {
+    audioRef.current = new Audio('/sounds/loadingsound/loadingsound.mp3');
+    audioRef.current.loop = true;
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = '';
+      }
+    };
+  }, []);
+
+  const playAudio = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.play().catch(error => console.error("Error playing audio:", error));
+    }
+  }, []);
+
+  const stopAudio = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+  }, []);
+
   const generateImage = useCallback(async () => {
-    if (isGeneratingImage) return;
+    if (isGeneratingImage || isImageGenerated) return;
     setIsGeneratingImage(true);
     setError(null);
+    setLoadingMessage("AI 이미지 생성 중...");
+    playAudio();
     try {
       const imageUrl = await generateAIImage(testResults, categoryScores);
       setAiImage(imageUrl);
+      setIsImageGenerated(true);
     } catch (error) {
       console.error("Failed to generate image:", error);
       setError(error.message || "이미지 생성에 실패했습니다.");
     } finally {
       setIsGeneratingImage(false);
+      stopAudio();
     }
-  }, [testResults, categoryScores, isGeneratingImage]);
+  }, [testResults, categoryScores, isGeneratingImage, isImageGenerated, playAudio, stopAudio]);
   
+  useEffect(() => {
+    if (!isImageGenerated && !isGeneratingImage && !error) {
+      generateImage();
+    }
+  }, [isImageGenerated, isGeneratingImage, error, generateImage]);
+
+  const handleDownloadParts = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (aiImage) {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+        canvas.toBlob((blob) => {
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = 'ai_generated_parts.jpg';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+        }, 'image/jpeg');
+      };
+      img.src = aiImage;
+    }
+  }, [aiImage]);
+
+  const toggleFullscreen = useCallback((e) => {
+    e.stopPropagation();
+    setIsFullscreen(!isFullscreen);
+  }, [isFullscreen]);
+
+  const handleShareTest = useCallback(() => {
+    navigator.clipboard.writeText(window.location.href).then(() => {
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    });
+  }, []);
+
   useEffect(() => {
     if (!aiImage && !isGeneratingImage && !error) {
       generateImage();
     }
   }, [aiImage, isGeneratingImage, error, generateImage]);
 
-  const handleGenerateImage = () => {
-    generateImage();
-  };
+  if (isGeneratingImage) {
+    return <LoadingScreen message={loadingMessage} />;
+  }
 
   return (
-    <div className="flex flex-col space-y-4">
+    <div className="flex flex-col space-y-4 relative">
       <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md">
         <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-white">{userName}님의 테스트 결과</h2>
         <div className="grid grid-cols-2 gap-4">
@@ -197,39 +276,50 @@ const ResultPage = ({ testResults, parts, userName, onRestart }) => {
           </div>
         </div>
         <div>
-          <h3 className="text-xl font-bold mb-2 text-gray-700 dark:text-gray-300">AI 생성 이미지</h3>
-          <div className="aspect-square bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400">
+        <h3 className="text-xl font-bold mb-2 text-gray-700 dark:text-gray-300">AI 생성 이미지</h3>
+          <div 
+            className="aspect-square bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 cursor-pointer"
+            onClick={toggleFullscreen}
+          >
             {aiImage ? (
               <img src={aiImage} alt="AI Generated" className="w-full h-full object-contain" />
             ) : (
-              <p>{isGeneratingImage ? "이미지 생성 중..." : error || "이미지를 생성할 수 없습니다."}</p>
+              <p>{error || "이미지를 생성할 수 없습니다."}</p>
             )}
           </div>
           <div className="mt-4 grid grid-cols-3 gap-2">
             <button 
-              onClick={handleGenerateImage} 
+              onClick={handleDownloadParts} 
               className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:bg-blue-300"
-              disabled={isGeneratingImage}
+              disabled={!aiImage}
             >
-              {isGeneratingImage ? "생성 중..." : "AI 이미지 생성"}
+              Parts 다운로드
             </button>
-            <button onClick={() => setShareMenuOpen(!shareMenuOpen)} className="bg-indigo-500 text-white px-4 py-2 rounded hover:bg-indigo-600">
-              SNS 공유
+            <button onClick={handleShareTest} className="bg-indigo-500 text-white px-4 py-2 rounded hover:bg-indigo-600">
+              테스트 공유하기
             </button>
             <button onClick={onRestart} className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
               처음으로
             </button>
           </div>
-          {shareMenuOpen && (
-            <div className="flex justify-around mt-2">
-              <button onClick={() => {/* Facebook 공유 로직 */}} className="p-2 bg-blue-600 text-white rounded">Facebook</button>
-              <button onClick={() => {/* Twitter 공유 로직 */}} className="p-2 bg-blue-400 text-white rounded">Twitter</button>
-              <button onClick={() => {/* Instagram 공유 로직 */}} className="p-2 bg-pink-500 text-white rounded">Instagram</button>
-              <button onClick={() => {/* KakaoTalk 공유 로직 */}} className="p-2 bg-yellow-400 text-white rounded">KakaoTalk</button>
-            </div>
-          )}
         </div>
       </div>
+      {isCopied && (
+        <div className="fixed inset-0 flex items-center justify-center z-50">
+          <div className="bg-black bg-opacity-50 text-white px-6 py-3 rounded-full flex items-center">
+            <CheckCircle className="mr-2" />
+            Copied
+          </div>
+        </div>
+      )}
+      {isFullscreen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
+          onClick={toggleFullscreen}
+        >
+          <img src={aiImage} alt="AI Generated" className="max-w-full max-h-full object-contain" />
+        </div>
+      )}
     </div>
   );
 };

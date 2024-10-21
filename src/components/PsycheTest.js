@@ -5,51 +5,32 @@ const PsycheTest = ({ questions, onAnswerChange, onComplete, onAnswerComplete })
   const [currentPage, setCurrentPage] = useState(0);
   const [answers, setAnswers] = useState(Array(questions.length).fill(null));
   const [progress, setProgress] = useState(0);
-  const audioContextRef = useRef(null);
-  const audioBufferRef = useRef(null);
+  const audioRefs = useRef([]);
 
   const questionsPerPage = 5;
   const totalPages = Math.ceil(questions.length / questionsPerPage);
 
   useEffect(() => {
-    // Initialize AudioContext and load the sound
-    audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
-    fetch('/sounds/ding.mp3')
-      .then(response => response.arrayBuffer())
-      .then(arrayBuffer => audioContextRef.current.decodeAudioData(arrayBuffer))
-      .then(audioBuffer => {
-        audioBufferRef.current = audioBuffer;
-      })
-      .catch(e => console.error('Error loading audio:', e));
-
-    return () => {
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
-      }
-    };
+    // Preload all interface sounds
+    for (let i = 1; i <= 11; i++) {
+      const audio = new Audio(`/sounds/buttonsounds/interface${i}.mp3`);
+      audioRefs.current.push(audio);
+    }
   }, []);
 
   useEffect(() => {
-    const answeredQuestions = answers.filter(answer => answer !== null).length;
-    setProgress((answeredQuestions / questions.length) * 100);
-  }, [answers, questions.length]);
-
-  const playSound = () => {
-    if (audioContextRef.current && audioBufferRef.current) {
-      const source = audioContextRef.current.createBufferSource();
-      source.buffer = audioBufferRef.current;
-
-      // Generate a random playback rate for 5 variations
-      const playbackRates = [0.8, 0.9, 1.0, 1.1, 1.2];
-      const randomRate = playbackRates[Math.floor(Math.random() * playbackRates.length)];
-      source.playbackRate.value = randomRate;
-
-      source.connect(audioContextRef.current.destination);
-      source.start();
-      console.log('Audio played with rate:', randomRate);
-    } else {
-      console.log('Audio context or buffer not ready');
+    for (let i = 1; i <= 11; i++) {
+      const audio = new Audio(`/sounds/buttonsounds/interface${i}.mp3`);
+      audio.volume = 0.5; // Set volume to 50% (adjust this value as needed)
+      audioRefs.current.push(audio);
     }
+  }, []);
+
+  const playRandomInterfaceSound = () => {
+    const randomIndex = Math.floor(Math.random() * audioRefs.current.length);
+    const audio = audioRefs.current[randomIndex];
+    audio.currentTime = 0; // Reset the audio to the beginning
+    audio.play().catch(error => console.error('Error playing audio:', error));
   };
 
   const handleAnswer = (questionIndex, value) => {
@@ -58,7 +39,7 @@ const PsycheTest = ({ questions, onAnswerChange, onComplete, onAnswerComplete })
     setAnswers(newAnswers);
     onAnswerChange(questionIndex, value);
     
-    playSound();
+    playRandomInterfaceSound();
     onAnswerComplete();
   };
 

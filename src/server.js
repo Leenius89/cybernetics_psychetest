@@ -85,20 +85,22 @@ app.post('/api/generate-image', async (req, res) => {
     }
 
     const output = await replicate.run(
-      "ostris/openflux.1:042cd79629af366fca1c414c17361d886d6f5be5967b367a4fddcfe6b6290293",
+      "lucataco/flux-schnell-lora:2a6b576af31790b470f0a8442e1e9791213fa13799cbb65a9fc1436e96389574",
       {
         input: {
           prompt,
+          hf_lora: "alvdansen/frosting_lane_flux", // New parameter for the new model
           num_outputs: 1,
           aspect_ratio: "1:1",
           output_format: "png",
           guidance_scale: 3.5,
-          output_quality: 80,
-          num_inference_steps: 28
+          output_quality: 40,
+          num_inference_steps: 18
         }
       }
     );
     
+    // The new model returns an array with a single URL
     return res.status(200).json({ imageUrl: output[0] });
   } catch (error) {
     console.error('Error generating image:', error);
